@@ -119,6 +119,93 @@ export const getPlaylistDetail = (id: number) => {
   return http<Result>('get', `/playlist/getPlaylistDetail/${id}`)
 }
 
+/**
+ * 创建歌单（用户主动创建）
+ * 对应后端：POST /playlist/create
+ */
+export const createPlaylist = (data: object) => {
+  return http<Result>('post', '/playlist/create', { data })
+}
+
+/**
+ * 获取歌单总数（可按风格统计）
+ * 对应后端：GET /playlist/count
+ */
+export const getPlaylistsCount = (style?: string) => {
+  return http<Result>('get', '/playlist/count', { params: { style } })
+}
+
+/**
+ * 分页查询歌单列表（管理/筛选用）
+ * 对应后端：POST /playlist/list
+ */
+export const getAllPlaylistsInfo = (data: object) => {
+  return http<ResultTable>('post', '/playlist/list', { data })
+}
+
+/**
+ * 新增歌单（管理端功能，按需使用）
+ * 对应后端：POST /playlist/add
+ */
+export const addPlaylist = (data: object) => {
+  return http<Result>('post', '/playlist/add', { data })
+}
+
+/**
+ * 更新歌单信息（不含封面）
+ * 对应后端：PUT /playlist/update
+ */
+export const updatePlaylist = (data: object) => {
+  return http<Result>('put', '/playlist/update', { data })
+}
+
+/**
+ * 更新歌单封面
+ * 对应后端：PATCH /playlist/cover/{id}
+ */
+export const updatePlaylistCover = (playlistId: number, formData: FormData) => {
+  return http<Result>('patch', `/playlist/cover/${playlistId}`, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+    data: formData,
+    transformRequest: [(data) => data],
+  })
+}
+
+/**
+ * 删除单个歌单
+ * 对应后端：DELETE /playlist/{id}
+ */
+export const deletePlaylist = (playlistId: number) => {
+  return http<Result>('delete', `/playlist/${playlistId}`)
+}
+
+/**
+ * 批量删除歌单
+ * 对应后端：DELETE /playlist/batch
+ */
+export const deletePlaylists = (ids: number[]) => {
+  return http<Result>('delete', '/playlist/batch', { data: ids })
+}
+
+/** 歌曲与歌单绑定：添加歌曲到歌单 */
+export const addSongsToPlaylist = (playlistId: number, songIds: number[]) => {
+  return http<Result>('post', '/playlist-binding/add-songs', {
+    data: { playlistId, songIds },
+  })
+}
+
+/** 歌曲与歌单绑定：从歌单移除歌曲 */
+export const removeSongsFromPlaylist = (playlistId: number, songIds: number[]) => {
+  return http<Result>('post', '/playlist-binding/remove-songs', {
+    data: { playlistId, songIds },
+  })
+}
+
+/** 歌曲与歌单绑定：清空歌单 */
+export const clearPlaylistSongs = (playlistId: number) => {
+  return http<Result>('delete', `/playlist-binding/clear/${playlistId}`)
+}
+
 /** 获取用户收藏的歌曲 */
 export const getFavoriteSongs = (data: object) => {
   return http<Result>('post', '/favorite/getFavoriteSongs', { data })

@@ -4,6 +4,7 @@ import { PropType, watch } from 'vue'
 import { formatMillisecondsToTime } from '@/utils'
 import default_album from '@/assets/default_album.jpg'
 import { collectSong, cancelCollectSong } from '@/api/system'
+import AddToPlaylistDialog from '@/components/Playlist/AddToPlaylistDialog.vue'
 import { ElMessage } from 'element-plus'
 import { UserStore } from '@/stores/modules/user'
 
@@ -90,6 +91,7 @@ const updateAllSongLikeStatus = (songId: number, status: number) => {
 }
 
 // 处理喜欢/取消喜欢
+// 喜欢 / 取消喜欢
 const handleLike = async (row: Song, e: Event) => {
   e.stopPropagation() // 阻止事件冒泡
   
@@ -123,6 +125,19 @@ const handleLike = async (row: Song, e: Event) => {
   }
 }
 
+// 收藏到歌单弹窗
+const addToPlaylistVisible = ref(false)
+const selectedSongIds = ref<number[]>([])
+const openAddToPlaylist = (songId: number, e: Event) => {
+  e.stopPropagation()
+  if (!userStore.isLoggedIn) {
+    ElMessage.warning('请先登录')
+    return
+  }
+  selectedSongIds.value = [songId]
+  addToPlaylistVisible.value = true
+}
+
 const downLoadMusic = (row: Song, e: Event) => {
   e.stopPropagation() // 阻止事件冒泡
   const link = document.createElement('a')
@@ -150,19 +165,20 @@ const isCurrentPlaying = (songId: number) => {
     " class="!rounded-lg !h-full transition duration-300">
     <el-table-column>
       <template #header>
-        <div class="grid grid-cols-[auto_4fr_3fr_3fr_1fr_2fr_1fr] items-center gap-6 w-full text-left mt-2">
+          <div class="grid grid-cols-[auto_4fr_3fr_3fr_1fr_1fr_2fr_1fr] items-center gap-6 w-full text-left mt-2">
           <div class="ml-3">标题</div>
           <div class="w-12"></div>
           <div class="ml-1">歌手</div>
           <div>专辑</div>
           <div>喜欢</div>
+            <div>收藏</div>
           <div class="ml-7">时长</div>
           <div>下载</div>
         </div>
       </template>
       <template #default="{ row }">
         <div
-          class="grid grid-cols-[auto_4fr_3fr_3fr_1fr_2fr_1fr] items-center gap-6 w-full group transition duration-300 rounded-2xl p-2"
+          class="grid grid-cols-[auto_4fr_3fr_3fr_1fr_1fr_2fr_1fr] items-center gap-6 w-full group transition duration-300 rounded-2xl p-2"
           :class="[
             isCurrentPlaying(row.songId) ? 'bg-[hsl(var(--hover-menu-bg))]' : 'hover:bg-[hsl(var(--hover-menu-bg))]',
             'cursor-pointer'
@@ -199,6 +215,13 @@ const isCurrentPlaying = (songId: number) => {
             </el-button>
           </div>
 
+          <!-- 收藏到歌单 -->
+          <div class="flex items-center ml-1">
+            <el-button text circle @click="openAddToPlaylist(row.songId, $event)">
+              <icon-mdi:playlist-plus class="text-lg" />
+            </el-button>
+          </div>
+
           <!-- 时长 -->
           <div class="text-left ml-8">
             <span>{{ formatMillisecondsToTime(Number(row.duration) * 1000) }}</span>
@@ -214,6 +237,7 @@ const isCurrentPlaying = (songId: number) => {
       </template>
     </el-table-column>
   </el-table>
+  <AddToPlaylistDialog v-model="addToPlaylistVisible" :song-ids="selectedSongIds" />
 </template>
 
 <style scoped>

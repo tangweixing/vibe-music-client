@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { getPlaylistDetail, addPlaylistComment, likeComment, deleteComment } from '@/api/system'
+import { getPlaylistDetail, addPlaylistComment, likeComment, deleteComment, clearPlaylistSongs } from '@/api/system'
+import { ElMessageBox } from 'element-plus'
 import { formatNumber } from '@/utils'
 import type { PlaylistDetail, Song } from '@/api/interface'
 import coverImg from '@/assets/cover.png'
@@ -35,7 +36,7 @@ const toggleCollect = async () => {
     } else {
       await favoriteStore.collectPlaylist(playlistId)
     }
-  } catch (error) {
+  } catch {
     ElMessage.error('操作失败')
   }
 }
@@ -79,16 +80,16 @@ const handleComment = async () => {
     ElMessage.warning('请输入评论内容')
     return
   }
-  
+
   try {
     const playlistId = Number(route.params.id)
     const content = commentContent.value.trim()
-    
+
     const res = await addPlaylistComment({
       playlistId,
       content
     })
-    
+
     if (res.code === 0) {
       ElMessage.success('评论发布成功')
       commentContent.value = ''
@@ -104,7 +105,7 @@ const handleComment = async () => {
     } else {
       ElMessage.error('评论发布失败')
     }
-  } catch (error) {
+  } catch {
     ElMessage.error('评论发布失败')
   }
 }
@@ -130,7 +131,7 @@ const handleLike = async (comment: PlaylistComment) => {
         }
         return item
       })
-      
+
       // 更新到store
       playlistStore.setPlaylistInfo({
         ...playlistStore.playlist!,
@@ -139,7 +140,7 @@ const handleLike = async (comment: PlaylistComment) => {
 
       ElMessage.success('点赞成功')
     }
-  } catch (error) {
+  } catch {
     ElMessage.error('点赞失败')
   }
 }
@@ -163,7 +164,7 @@ const handleDelete = async (comment: PlaylistComment) => {
     } else {
       ElMessage.error('删除失败')
     }
-  } catch (error) {
+  } catch {
     ElMessage.error('删除失败')
   }
 }
@@ -232,6 +233,44 @@ const handlePlayAll = async () => {
   await loadTrack()
   play()
 }
+
+// 清空歌单
+const handleClearPlaylist = async () => {
+  const playlistId = Number(route.params.id)
+  try {
+    await ElMessageBox.confirm('确定清空该歌单中的所有歌曲？此操作不可恢复', '清空歌单', { type: 'warning' })
+    const res = await clearPlaylistSongs(playlistId)
+    if (res.code === 0) {
+      ElMessage.success('已清空歌单')
+      // 刷新页面数据
+      const detail = await getPlaylistDetail(playlistId)
+      if (detail.code === 0 && (detail as any).data?.songs) {
+        const playlistData = detail.data as PlaylistDetail
+        const convertedSongs: Song[] = playlistData.songs.map(song => ({
+          songId: song.songId,
+          songName: song.songName,
+          artistName: song.artistName,
+          album: song.album,
+          duration: song.duration,
+          coverUrl: song.coverUrl || coverImg,
+          audioUrl: song.audioUrl,
+          likeStatus: song.likeStatus,
+          releaseTime: song.releaseTime
+        }))
+        playlistStore.setSongs(convertedSongs)
+        playlistStore.setPlaylistInfo({
+          ...playlistStore.playlist!,
+          trackCount: convertedSongs.length,
+          tracks: convertedSongs,
+        })
+      }
+    } else {
+      ElMessage.error(res.message || '清空失败')
+    }
+  } catch {
+    // 用户取消
+  }
+}
 </script>
 <template>
   <div class="flex flex-col h-full bg-background flex-1 md:overflow-hidden">
@@ -263,12 +302,18 @@ const handlePlayAll = async () => {
           <button @click="handlePlayAll"
             class="text-white inline-flex items-center justify-center gap-2 whitespace-nowrap text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-10 rounded-lg px-8">
             <icon-solar:play-line-duotone />
-            播放全部</button>
+            播放全部
+          </button>
           <button @click="toggleCollect"
             class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-hoverMenuBg h-10 w-10 rounded-lg border-2 border-gray-300"
             :class="{ 'text-red-500': isCollected }">
             <icon-ic:round-favorite v-if="isCollected" class="text-xl" />
             <icon-ic:round-favorite-border v-else class="text-xl" />
+          </button>
+          <button @click="handleClearPlaylist"
+            class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-hoverMenuBg h-10 rounded-lg px-4">
+            <icon-material-symbols:delete-outline />
+            清空歌单
           </button>
         </div>
       </div>
@@ -281,9 +326,10 @@ const handlePlayAll = async () => {
           class="inline-flex h-10 items-center rounded-lg bg-muted/70 p-1 text-muted-foreground w-full justify-start mb-2">
           <button v-for="tab in [
             { name: '歌曲', value: 'songs' },
-            { name: '评论', value: 'comments' }
+            { name: '评论', value: 'comments' },
           ]" :key="tab.value" @click="activeTab = tab.value" :class="{
-            'bg-activeMenuBg text-foreground shadow-sm': activeTab === tab.value
+            'bg-activeMenuBg text-foreground shadow-sm':
+              activeTab === tab.value,
           }"
             class="inline-flex items-center justify-center whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50">
             {{ tab.name }}
@@ -301,15 +347,8 @@ const handlePlayAll = async () => {
           <div class="p-4 mb-4">
             <div class="flex items-start gap-3 mr-8">
               <div class="flex-1">
-                <el-input
-                  v-model="commentContent"
-                  type="textarea"
-                  :rows="3"
-                  :maxlength="maxLength"
-                  placeholder="说点什么吧"
-                  resize="none"
-                  show-word-limit
-                />
+                <el-input v-model="commentContent" type="textarea" :rows="3" :maxlength="maxLength" placeholder="说点什么吧"
+                  resize="none" show-word-limit />
                 <div class="flex justify-end items-center mt-4 mr-1">
                   <button @click="handleComment" :disabled="!commentContent.trim()"
                     class="px-6 py-1.5 bg-primary text-white rounded-full text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-primary/90 transition-colors">
@@ -322,7 +361,9 @@ const handlePlayAll = async () => {
 
           <!-- 评论列表 -->
           <div class="mb-6 ml-6">
-            <h3 class="font-bold mb-4">最新评论（{{ formatNumber(playlist?.commentCount ?? 0) }}）</h3>
+            <h3 class="font-bold mb-4">
+              最新评论（{{ formatNumber(playlist?.commentCount ?? 0) }}）
+            </h3>
             <div v-if="comments.length">
               <template v-for="comment in comments" :key="comment.commentId">
                 <div class="flex gap-3 py-4 group mr-12">
@@ -331,7 +372,9 @@ const handlePlayAll = async () => {
                   </div>
                   <div class="flex-1">
                     <div class="flex items-center gap-2">
-                      <span class="text-sm font-medium text-blue-500">{{ comment.username }}</span>
+                      <span class="text-sm font-medium text-blue-500">{{
+                        comment.username
+                      }}</span>
                     </div>
                     <p class="text-sm mt-1 mb-2">{{ comment.content }}</p>
                     <div class="flex items-center justify-between text-sm text-gray-400">
@@ -340,15 +383,11 @@ const handlePlayAll = async () => {
                         <!-- 如果是用户自己的评论，显示删除按钮 -->
                         <button v-if="comment.username === currentUsername"
                           class="flex items-center gap-1 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
-                          @click="handleDelete(comment)"
-                        >
+                          @click="handleDelete(comment)">
                           <icon-material-symbols:delete-outline />
                           <span>删除</span>
                         </button>
-                        <button 
-                          class="flex items-center gap-1 hover:text-gray-600 mr-1"
-                          @click="handleLike(comment)"
-                        >
+                        <button class="flex items-center gap-1 hover:text-gray-600 mr-1" @click="handleLike(comment)">
                           <span>{{ formatNumber(comment.likeCount) }}</span>
                           <icon-material-symbols:thumb-up />
                         </button>
@@ -366,7 +405,6 @@ const handlePlayAll = async () => {
         </div>
       </div>
     </div>
-
   </div>
 </template>
 

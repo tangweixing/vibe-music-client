@@ -85,3 +85,26 @@ export interface SongDetail {
     likeStatus: boolean | null
     comments: Comment[]
 }
+
+// ---- Playlist DTOs ----
+export interface PlaylistAddDTO {
+    title: string
+    isPublic: boolean
+    style?: string
+    introduction?: string
+    coverUrl?: string
+}
+
+export interface PlaylistUpdateDTO {
+    playlistId: number
+    title: string
+    introduction?: string
+    style?: string
+    isPublic: boolean
+}
+
+export interface SimplePlaylistItem {
+    id: number
+    title: string
+    coverUrl?: string | null
+}
