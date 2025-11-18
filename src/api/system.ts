@@ -25,6 +25,14 @@ export type ResultTable = {
 export const login = (data: object) => {
   return http<Result>('post', '/user/login', { data })
 }
+/** 手机号密码登录 */
+export const phoneLogin = (data: { phone: string; password: string }) => {
+  return http<Result>('post', '/user/phoneLogin', { data })
+}
+/** 手机号验证码登录 */
+export const phoneCodeLogin = (data: { phone: string; verificationCode: string }) => {
+  return http<Result>('post', '/user/phoneCodeLogin', { data })
+}
 
 /** 用户登出 */
 export const logout = () => {
@@ -37,10 +45,29 @@ export const sendEmailCode = (email: string) => {
     params: { email },
   })
 }
+/** 发送手机验证码 */
+export const sendPhoneCode = (phone: string) => {
+  return http<Result>('get', '/user/sendPhoneVerificationCode', { params: { phone } })
+}
 
 /** 用户注册 */
 export const register = (data: object) => {
   return http<Result>('post', '/user/register', { data })
+}
+/** 手机号注册 */
+export const phoneRegister = (data: { phone: string; password: string; verificationCode: string; username: string }) => {
+  return http<Result>('post', '/user/phoneRegister', { data })
+}
+
+/** 支付宝登录（使用授权码换取 token） */
+export const alipayLogin = (data: { authCode: string }) => {
+  return http<Result>('post', '/user/alipayLogin', { data })
+}
+
+/** 获取服务器下发的 state（可选，若后端提供则用于CSRF校验） */
+export const getAlipayState = () => {
+  // 兼容不同后端路径，优先尝试常见路径，其次回退
+  return http<Result>('get', '/oauth/alipay/state').catch(() => http<Result>('get', '/api/oauth/alipay/state'))
 }
 
 /** 重置密码 */
@@ -117,6 +144,10 @@ export const getAllPlaylists = (data: object) => {
 /** 获取歌单详情 */
 export const getPlaylistDetail = (id: number) => {
   return http<Result>('get', `/playlist/getPlaylistDetail/${id}`)
+}
+/** 查询指定用户创建的歌单（分页） */
+export const getUserPlaylists = (data: { pageNum: number; pageSize: number; userId: number }) => {
+  return http<ResultTable>('post', '/playlist/list', { data })
 }
 
 /**

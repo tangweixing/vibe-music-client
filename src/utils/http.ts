@@ -40,8 +40,9 @@ instance.interceptors.request.use(
       if (!config.headers) {
         config.headers = {} as AxiosRequestHeaders
       }
-      // 添加Bearer前缀
-      config.headers.Authorization = token
+      // 后端不需要 Bearer 前缀，统一去掉
+      const stripped = token.replace(/^Bearer\s+/i, '')
+      config.headers.Authorization = stripped
     }
 
     // console.log('请求URL:', config.url)

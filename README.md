@@ -82,6 +82,17 @@ _（本项目界面设计借鉴了
     - **注意**: 启动前端应用前，请确保你的 `Vibe Music Server`
       后端服务已经成功配置、启动并正在运行。
 
+    - 如需使用「支付宝登录」，前端需额外配置以下变量（仅前端所需，私钥/公钥等敏感信息请放后台）：
+
+      ```env
+      # 前端所需（开发/生产均可配置）
+      VITE_ALIPAY_APP_ID = 9021000157624336
+      # 生产主域： https://openauth.alipay.com ；沙箱： https://openauth.alipaydev.com
+      VITE_ALIPAY_AUTH_HOST = https://openauth.alipay.com
+      # 回调地址，不配置则默认 ${origin}/auth/alipay （已兼容 hash/history）
+      VITE_ALIPAY_REDIRECT = http://localhost:5173/auth/alipay
+      ```
+
 4.  **启动开发服务器**
 
     ```bash

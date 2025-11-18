@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import { ref, reactive } from 'vue'
-import { User, Message, Lock, Key } from '@element-plus/icons-vue'
+import { ref, reactive, computed } from 'vue'
+import { User, Message, Lock, Key, Cellphone } from '@element-plus/icons-vue'
 import type { FormInstance, FormRules } from 'element-plus'
 import { ElMessage } from 'element-plus'
-import { sendEmailCode, register } from '@/api/system'
+import { sendEmailCode, register, sendPhoneCode, phoneRegister } from '@/api/system'
 
 const emit = defineEmits(['success', 'switch-tab'])
 
@@ -11,91 +11,108 @@ const loading = ref(false)
 const countdown = ref(0)
 const registerFormRef = ref<FormInstance>()
 
-const registerForm = reactive({
+const mode = ref<'email' | 'phone'>('email')
+const emailForm = reactive({
   username: '',
   email: '',
   password: '',
   verificationCode: '',
 })
+const phoneForm = reactive({
+  username: '',
+  phone: '',
+  password: '',
+  verificationCode: '',
+})
 
 // 表单验证规则
-const registerRules = reactive<FormRules>({
+const emailRules: FormRules = {
   username: [
     { required: true, message: '请输入用户名', trigger: 'blur' },
-    {
-      pattern: /^[a-zA-Z0-9_-]{4,16}$/,
-      message: '用户名格式：4-16位字符（字母、数字、下划线、连字符）',
-      trigger: 'blur',
-    },
+    { pattern: /^[a-zA-Z0-9_-]{4,16}$/, message: '4-16位字母数字_-', trigger: 'blur' },
   ],
   email: [
     { required: true, message: '请输入邮箱', trigger: 'blur' },
-    { type: 'email', message: '请输入正确的邮箱格式', trigger: 'blur' },
+    { type: 'email', message: '邮箱格式不正确', trigger: 'blur' },
   ],
   password: [
     { required: true, message: '请输入密码', trigger: 'blur' },
-    {
-      pattern: /^(?![0-9]+$)(?![a-zA-Z]+$)[0-9A-Za-z\W]{8,18}$/,
-      message: '密码格式：8-18位数字、字母、符号的任意两种组合',
-      trigger: 'blur',
-    },
+    { pattern: /^(?![0-9]+$)(?![a-zA-Z]+$)[0-9A-Za-z\W]{8,18}$/, message: '8-18位两种字符组合', trigger: 'blur' },
   ],
   verificationCode: [
     { required: true, message: '请输入验证码', trigger: 'blur' },
-    {
-      pattern: /^[0-9a-zA-Z]{6}$/,
-      message: '验证码格式：6位字符（大小写字母、数字）',
-      trigger: 'blur',
-    },
+    { pattern: /^[0-9a-zA-Z]{6}$/, message: '验证码为6位字符', trigger: 'blur' },
   ],
-})
+}
+const phoneRules: FormRules = {
+  username: [
+    { required: true, message: '请输入用户名', trigger: 'blur' },
+    { pattern: /^[a-zA-Z0-9_-]{4,16}$/, message: '4-16位字母数字_-', trigger: 'blur' },
+  ],
+  phone: [
+    { required: true, message: '请输入手机号', trigger: 'blur' },
+    { pattern: /^1[3-9]\d{9}$/, message: '手机号格式不正确', trigger: 'blur' },
+  ],
+  password: [
+    { required: true, message: '请输入密码', trigger: 'blur' },
+    { pattern: /^(?![0-9]+$)(?![a-zA-Z]+$)[0-9A-Za-z\W]{8,18}$/, message: '8-18位两种字符组合', trigger: 'blur' },
+  ],
+  verificationCode: [
+    { required: true, message: '请输入验证码', trigger: 'blur' },
+    { pattern: /^[0-9a-zA-Z]{6}$/, message: '验证码为6位字符', trigger: 'blur' },
+  ],
+}
+
+const currentModel = computed(() => mode.value === 'email' ? emailForm : phoneForm)
+const currentRules = computed(() => mode.value === 'email' ? emailRules : phoneRules)
 
 // 发送验证码
 const handleSendCode = async () => {
   try {
-    if (!registerForm.email) {
-      ElMessage.warning('请先输入邮箱')
-      return
-    }
-    const response = await sendEmailCode(registerForm.email)
-    if (response.code === 0) {
-      ElMessage.success('验证码已发送')
-      countdown.value = 60
-      const timer = setInterval(() => {
-        countdown.value--
-        if (countdown.value <= 0) {
-          clearInterval(timer)
-        }
-      }, 1000)
+    if (mode.value === 'email') {
+      if (!emailForm.email) { ElMessage.warning('请先输入邮箱'); return }
+      const response = await sendEmailCode(emailForm.email)
+      if (response.code === 0) {
+        ElMessage.success('验证码已发送')
+      } else { ElMessage.error(response.message) }
     } else {
-      ElMessage.error(response.message)
+      if (!phoneForm.phone) { ElMessage.warning('请先输入手机号'); return }
+      const response = await sendPhoneCode(phoneForm.phone)
+      if (response.code === 0) { ElMessage.success('验证码已发送') } else { ElMessage.error(response.message) }
     }
-  } catch (error: any) {
-    ElMessage.error(error.message || '发送验证码失败')
-  }
+    countdown.value = 60
+    const timer = setInterval(() => { countdown.value--; if (countdown.value <= 0) clearInterval(timer) }, 1000)
+  } catch (error: any) { ElMessage.error(error.message || '发送验证码失败') }
 }
 
 // 注册处理
 const handleRegister = async () => {
   if (!registerFormRef.value) return
-  await registerFormRef.value.validate(async (valid, fields) => {
-    if (valid) {
-      loading.value = true
-      try {
-        const response = await register(registerForm)
-        if (response.code === 0) {
-          ElMessage.success('注册成功，请登录')
-          emit('switch-tab', 'login')
-        } else {
-          ElMessage.error(response.message)
-        }
-      } catch (error: any) {
-        ElMessage.error(error.message || '注册失败')
-      } finally {
-        loading.value = false
+  await registerFormRef.value.validate(async (valid) => {
+    if (!valid) return
+    loading.value = true
+    try {
+      let response
+      if (mode.value === 'email') {
+        response = await register(emailForm)
+      } else {
+        response = await phoneRegister({
+          phone: phoneForm.phone,
+          password: phoneForm.password,
+          verificationCode: phoneForm.verificationCode,
+          username: phoneForm.username,
+        })
       }
-    } else {
-      console.log('验证失败:', fields)
+      if (response.code === 0) {
+        ElMessage.success('注册成功，请登录')
+        emit('switch-tab', 'login')
+      } else {
+        ElMessage.error(response.message)
+      }
+    } catch (error: any) {
+      ElMessage.error(error.message || '注册失败')
+    } finally {
+      loading.value = false
     }
   })
 }
@@ -108,43 +125,46 @@ function switchToLogin() {
 
 <template>
   <div class="register-container">
-    <p class="form-subtitle">创建一个新账户</p>
-
-    <el-form ref="registerFormRef" :model="registerForm" :rules="registerRules" label-width="0" size="large"
-      @keyup.enter="handleRegister">
+    <div class="mode-toggle">
+      <el-radio-group v-model="mode" size="small" class="mode-group">
+        <el-radio-button label="email">邮箱注册</el-radio-button>
+        <el-radio-button label="phone">手机号注册</el-radio-button>
+      </el-radio-group>
+    </div>
+    <p class="form-subtitle">{{ mode==='email' ? '使用邮箱注册新账户' : '使用手机号注册新账户' }}</p>
+    <el-form ref="registerFormRef" :model="currentModel" :rules="currentRules" label-width="0" size="large" @keyup.enter="handleRegister">
       <el-form-item prop="username">
-        <el-input v-model="registerForm.username" placeholder="用户名" :prefix-icon="User" />
+        <el-input v-model="currentModel.username" placeholder="用户名" :prefix-icon="User" />
       </el-form-item>
-
-      <el-form-item prop="email" class="mt-6">
-        <el-input v-model="registerForm.email" placeholder="邮箱" :prefix-icon="Message">
-          <template #append>
-            <el-button :disabled="!!countdown || loading" @click="handleSendCode">
-              {{ countdown ? `${countdown}s后重试` : '获取验证码' }}
-            </el-button>
-          </template>
-        </el-input>
-      </el-form-item>
-
+      <template v-if="mode==='email'">
+        <el-form-item prop="email" class="mt-6">
+          <el-input v-model="emailForm.email" placeholder="邮箱" :prefix-icon="Message">
+            <template #append>
+              <el-button :disabled="!!countdown || loading" @click="handleSendCode">{{ countdown ? countdown+'s后重试' : '获取验证码' }}</el-button>
+            </template>
+          </el-input>
+        </el-form-item>
+      </template>
+      <template v-else>
+        <el-form-item prop="phone" class="mt-6">
+          <el-input v-model="phoneForm.phone" placeholder="手机号" :prefix-icon="Cellphone">
+            <template #append>
+              <el-button :disabled="!!countdown || loading" @click="handleSendCode">{{ countdown ? countdown+'s后重试' : '获取验证码' }}</el-button>
+            </template>
+          </el-input>
+        </el-form-item>
+      </template>
       <el-form-item prop="verificationCode" class="mt-6">
-        <el-input v-model="registerForm.verificationCode" placeholder="验证码" :prefix-icon="Key" />
+        <el-input v-model="currentModel.verificationCode" placeholder="验证码" :prefix-icon="Key" />
       </el-form-item>
-
       <el-form-item prop="password" class="mt-6">
-        <el-input v-model="registerForm.password" type="password" placeholder="密码" :prefix-icon="Lock" show-password />
+        <el-input v-model="currentModel.password" type="password" placeholder="密码" :prefix-icon="Lock" show-password />
       </el-form-item>
-
       <el-form-item class="mt-6">
-        <el-button class="submit-btn" type="primary" :loading="loading" @click="handleRegister">
-          注册
-        </el-button>
+        <el-button class="submit-btn" type="primary" :loading="loading" @click="handleRegister">注册</el-button>
       </el-form-item>
     </el-form>
-
-    <p class="login-text">
-      已有账户？
-      <a href="#" @click.prevent="switchToLogin">登录</a>
-    </p>
+    <p class="login-text">已有账户？<a href="#" @click.prevent="switchToLogin">登录</a></p>
   </div>
 </template>
 
@@ -156,6 +176,9 @@ function switchToLogin() {
   margin: 0 auto;
   padding: 20px;
 }
+
+.mode-toggle { margin-bottom: 12px; display: flex; justify-content: center; }
+.mode-group :deep(.el-radio-button__inner) { padding: 6px 16px; }
 
 .form-subtitle {
   color: #666;

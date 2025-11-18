@@ -1,32 +1,26 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { UserStore } from '@/stores/modules/user'
-import AuthTabs from '@/components/Auth/AuthTabs.vue'
-import FeedbackDialog from '@/components/Common/FeedbackDialog.vue'
+import { defineAsyncComponent } from 'vue'
+const AuthTabs = defineAsyncComponent(() => import('@/components/Auth/AuthTabs.vue'))
+const FeedbackDialog = defineAsyncComponent(() => import('@/components/Common/FeedbackDialog.vue'))
 import defaultAvatar from '@/assets/user.jpg'
 import { ElMessage } from 'element-plus'
-import { logout } from '@/api/system'
 import { useRouter } from 'vue-router'
 
 const showLogin = ref(false)
 const user = UserStore()
 const router = useRouter()
-const feedbackDialogRef = ref<InstanceType<typeof FeedbackDialog> | null>(null)
+const feedbackDialogRef = ref<any | null>(null)
 
 const handleLogout = async () => {
-  try {
-    const response = await logout()
-    if (response.code === 0) {
-      user.clearUserInfo()
-      ElMessage.success('退出登录成功')
-    } else {
-      ElMessage.error(response.message || '退出失败')
-    }
-  } catch (error: any) {
-    console.error('退出登录错误:', error)
-    ElMessage.error(error.message || '退出失败')
-    // 即使请求失败也清除用户信息
-    user.clearUserInfo()
+  const res = await user.userLogout()
+  if (res.success) {
+    ElMessage.success('退出登录成功')
+    router.replace('/')
+  } else {
+    // 兼容后端返回 200 但消息非 0 的情况，前端仍已清理本地状态
+    ElMessage.warning(res.message || '退出可能未完全生效')
   }
 }
 

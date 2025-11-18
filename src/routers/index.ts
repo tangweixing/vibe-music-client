@@ -21,6 +21,10 @@ const router = createRouter({
       component: () => import('@/pages/index.vue'),
     },
     {
+      path: '/auth/alipay',
+      component: () => import('@/pages/auth/alipay.vue'),
+    },
+    {
       path: '/library',
       component: () => import('@/pages/library/index.vue'),
     },

@@ -6,8 +6,9 @@ import {
   updatePlaylist,
   updatePlaylistCover,
   deletePlaylist as apiDeletePlaylist,
-  getAllPlaylistsInfo,
+  getUserPlaylists,
 } from '@/api/system'
+import { UserStore } from './user'
 import type { PlaylistAddDTO, PlaylistUpdateDTO, SimplePlaylistItem } from '@/api/interface'
 
 interface State {
@@ -22,10 +23,20 @@ export const useMyPlaylistsStore = defineStore('myPlaylists', {
   }),
   actions: {
     // 拉取我创建的歌单（后端若支持按照登录用户过滤，可在 DTO 中透传）
-    async fetchMyPlaylists(params: Record<string, any> = { pageNum: 1, pageSize: 50 }) {
+    async fetchMyPlaylists(params: { pageNum?: number; pageSize?: number } = { pageNum: 1, pageSize: 50 }) {
       try {
         this.loading = true
-        const res = await getAllPlaylistsInfo(params)
+        const user = UserStore()
+        if (!user.userInfo?.userId) {
+          this.myPlaylists = []
+          return
+        }
+        const dto = {
+          pageNum: params.pageNum ?? 1,
+            pageSize: params.pageSize ?? 50,
+            userId: user.userInfo.userId,
+        }
+        const res = await getUserPlaylists(dto as any)
         if (res.code === 0 && res.data?.items) {
           this.myPlaylists = res.data.items.map((it: any) => ({
             id: it.playlistId ?? it.id,
