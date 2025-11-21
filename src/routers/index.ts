@@ -49,6 +49,10 @@ const router = createRouter({
       component: () => import('@/pages/like/index.vue'),
     },
     {
+      path: '/wallet',
+      component: () => import('@/pages/wallet/index.vue'),
+    },
+    {
       path: '/user',
       component: () => import('@/pages/user/index.vue'),
     },

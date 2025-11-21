@@ -49,13 +49,6 @@ const userRules = reactive<FormRules>({
   ],
 })
 
-// 检查登录状态
-onMounted(() => {
-  if (!userStore.isLoggedIn) {
-    authVisible.value = true
-  }
-})
-
 // 处理头像上传
 const handleAvatarClick = () => {
   const input = document.createElement('input')
@@ -194,6 +187,13 @@ const handleDelete = async () => {
     loading.value = false
   }
 }
+
+// 检查登录状态
+onMounted(() => {
+  if (!userStore.isLoggedIn) {
+    authVisible.value = true
+  }
+})
 </script>
 
 <template>
